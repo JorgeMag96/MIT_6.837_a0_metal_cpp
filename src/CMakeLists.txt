@@ -1,6 +1,9 @@
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ..) # This will place the executable in the root folder of the build path, instead of having it under the src/
 
-add_executable(a0_metal main.cpp)
+# Collect all CPP files in the vecmath directory
+file(GLOB VECSRC "vecmath/*.cpp")
+
+add_executable(a0_metal main.cpp ${VECSRC})
 target_link_libraries(a0_metal METAL_CPP)
 
 # --------------------------------------------------------------------
