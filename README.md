@@ -7,3 +7,8 @@ Video lectures by Justin Solomon: [6.837: Introduction to Computer Graphics (fal
 The difference from the course original instructions is that here we use [CMake](https://cmake.org/), [Metal](https://developer.apple.com/metal/), and [Metal-cpp](https://developer.apple.com/metal/cpp/) to solve the assignment.
 
 Here's a good starting point to learn Metal-cpp with CMake: [LeeTeng2001/metal-cpp-cmake](https://github.com/LeeTeng2001/metal-cpp-cmake)
+
+Very helpful documentations:
+- [Metal](https://developer.apple.com/documentation/metal?language=objc)
+- [MetalKit](https://developer.apple.com/documentation/metalkit?language=objc)
+- [AppKit](https://developer.apple.com/documentation/appkit?language=objc)

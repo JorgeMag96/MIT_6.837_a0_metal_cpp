@@ -6,16 +6,14 @@ file(GLOB VECSRC "vecmath/*.cpp")
 add_executable(a0_metal main.cpp ${VECSRC})
 target_link_libraries(a0_metal METAL_CPP)
 
-# --------------------------------------------------------------------
-# ------ Define the source and destination directories ------
-set(SOURCE_DIR "${CMAKE_SOURCE_DIR}/resources")
-set(DESTINATION_DIR "${CMAKE_BINARY_DIR}/resources")
+# Define the source and destination directories for resource files
+set(SOURCE_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/resources")
+set(DESTINATION_RESOURCES_DIR "${CMAKE_BINARY_DIR}/resources")
 
-# ------ Create a custom target to copy the resources folder ------
+# Create a custom target to copy the resources folder
 add_custom_target(copy_resources ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${SOURCE_DIR} ${DESTINATION_DIR})
-# --------------------------------------------------------------------
+        ${SOURCE_RESOURCES_DIR} ${DESTINATION_RESOURCES_DIR})
 
 # Add a dependency on the custom target, ensuring it runs before the main target
 add_dependencies(a0_metal copy_resources)
