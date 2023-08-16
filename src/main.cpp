@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include "vecmath/Vector3f.h"
 
 #pragma region Declarations {
@@ -74,10 +75,18 @@ inline std::vector<uint32_t> extract_indexes(const std::string &s, char delimite
     return indexes;
 }
 
-void loadInput()
+void loadModel(const std::string* file_name)
 {
+    std::cout << "Opening file: " << *file_name << "\n";
+
+    std::ifstream file(*file_name); // Open the file with the given name
+    if (!file) {
+        std::cerr << "Unable to open file!\n";
+        return;
+    }
+
     char buffer[1024];
-    while(std::cin.getline(buffer, 1024)) {
+    while(file.getline(buffer, 1024)) {
         std::stringstream ss(buffer);
         std::string s;
 
@@ -87,9 +96,9 @@ void loadInput()
             ss >> v[0] >> v[1] >> v[2];
 
             if(buffer[1] == 'n') {
-                vecn.push_back(Vector3f(v[0],v[1],v[2]));
+                vecn.push_back(v);
             } else {
-                vecv.push_back(Vector3f(v[0],v[1],v[2]));
+                vecv.push_back(v);
             }
             continue;
         }
@@ -105,16 +114,13 @@ void loadInput()
 
             vecf.push_back(std::vector<uint32_t>({idx1[0],idx2[0],idx3[0], idx1[2], idx2[2], idx3[2]}));
         }
-
-        /*
-        for(auto & i : vecv) {
-            std::cout << i.x() << ", " << i.y() << ", " << i.z() << std::endl;
-        }*/
     }
 }
 
 int main() {
-    loadInput();
+    std::string file_name = "resources/sphere.obj";
+    loadModel(&file_name);
+
     NS::AutoreleasePool* pAutoreleasePool = NS::AutoreleasePool::alloc()->init();
 
     MyAppDelegate del;
@@ -184,25 +190,51 @@ NS::Menu* MyAppDelegate::createMenuBar()
 void MyAppDelegate::applicationWillFinishLaunching( NS::Notification* pNotification )
 {
     NS::Menu* pMenu = createMenuBar();
-    NS::Application* pApp = reinterpret_cast< NS::Application* >( pNotification->object() );
+
+    // An object that manages an app’s main event loop and resources used by all of that app’s objects.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication?language=objc
+    auto* pApp = reinterpret_cast< NS::Application* >( pNotification->object() );
+
     pApp->setMainMenu( pMenu );
     pApp->setActivationPolicy( NS::ActivationPolicy::ActivationPolicyRegular );
 }
 
 void MyAppDelegate::applicationDidFinishLaunching( NS::Notification* pNotification )
 {
-    CGRect frame = (CGRect){ {100.0, 100.0}, {512.0, 512.0} };
+    // Origin and size of the window’s content area in screen coordinates.
+    // Note that the window server limits window position coordinates to ±16,000 and sizes to 10,000.
+    CGRect frame = (CGRect){ {500.0, 300.0}, {512.0, 512.0} };
 
+    // A window that an app displays on the screen.
+    // Docs: https://developer.apple.com/documentation/appkit/nswindow?language=objc
     _pWindow = NS::Window::alloc()->init(
             frame,
+            // The window displays a close button. The window displays a title bar.
             NS::WindowStyleMaskClosable|NS::WindowStyleMaskTitled,
+            // The window renders all drawing into a display buffer and then flushes it to the screen.
             NS::BackingStoreBuffered,
-            false );
+            // Specifies whether the window server creates a window device for the window immediately.
+            // When YES, the window server defers creating the window device until the window is moved onscreen.
+            // All display messages sent to the window or its views are postponed until the window is created, just before it’s moved onscreen.
+            false);
 
+    // Start by getting a GPU device.
+    // Each Metal device instance represents a GPU and is the main starting point for your app’s interaction with it.
+    // All the objects your app needs to interact with Metal come from a MTLDevice that you acquire at runtime.
+    // Docs: https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/getting_the_default_gpu?language=objc
     _pDevice = MTL::CreateSystemDefaultDevice();
 
+    // Initializes a view with the specified frame rectangle and Metal device (GPU).
+    // Docs: https://developer.apple.com/documentation/metalkit/mtkview?language=objc
     _pMtkView = MTK::View::alloc()->init( frame, _pDevice );
+
+    // Ordinary format with four 8-bit normalized unsigned integer components in BGRA order with conversion between
+    // sRGB and linear space.
+    // Docs: https://developer.apple.com/documentation/metalkit/mtkview/1535940-colorpixelformat?language=objc
     _pMtkView->setColorPixelFormat( MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB );
+
+    // The color to use to clear the color target when creating a render pass descriptor.
+    // Docs: https://developer.apple.com/documentation/metalkit/mtkview/1536036-clearcolor?language=objc
     _pMtkView->setClearColor( MTL::ClearColor::Make( 0.0, 0.0, 0.0, 1.0 ) );
 
     _pViewDelegate = new MyMTKViewDelegate( _pDevice );
@@ -213,7 +245,7 @@ void MyAppDelegate::applicationDidFinishLaunching( NS::Notification* pNotificati
 
     _pWindow->makeKeyAndOrderFront( nullptr );
 
-    NS::Application* pApp = reinterpret_cast< NS::Application* >( pNotification->object() );
+    auto* pApp = reinterpret_cast< NS::Application* >( pNotification->object() );
     pApp->activateIgnoringOtherApps( true );
 }
 
