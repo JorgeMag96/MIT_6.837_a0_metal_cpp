@@ -25,6 +25,8 @@ private:
     MTL::CommandQueue* _pCommandQueue;
 };
 
+// This class contains methods for responding to a MetalKit view's drawing and resizing events.
+// Docs: https://developer.apple.com/documentation/metalkit/mtkviewdelegate?language=objc
 class MyMTKViewDelegate : public MTK::ViewDelegate
 {
 public:
@@ -112,7 +114,7 @@ void loadModel(const std::string* file_name)
             std::vector<uint32_t> idx2 = extract_indexes(s2, '/');
             std::vector<uint32_t> idx3 = extract_indexes(s3, '/');
 
-            vecf.push_back(std::vector<uint32_t>({idx1[0],idx2[0],idx3[0], idx1[2], idx2[2], idx3[2]}));
+            vecf.push_back({idx1[0],idx2[0],idx3[0], idx1[2], idx2[2], idx3[2]});
         }
     }
 }
@@ -238,15 +240,29 @@ void MyAppDelegate::applicationDidFinishLaunching( NS::Notification* pNotificati
     _pMtkView->setClearColor( MTL::ClearColor::Make( 0.0, 0.0, 0.0, 1.0 ) );
 
     _pViewDelegate = new MyMTKViewDelegate( _pDevice );
+
+    // Use a delegate to provide a drawing method to a MTKView object and respond to rendering events without subclassing the MTKView class.
     _pMtkView->setDelegate( _pViewDelegate );
 
+    // The window’s content view, the highest accessible view object in the window’s view hierarchy.
+    // Docs: https://developer.apple.com/documentation/appkit/nswindow/1419160-contentview?language=objc
     _pWindow->setContentView( _pMtkView );
+
+    // The string that appears in the title bar of the window or the path to the represented file.
+    // Docs: https://developer.apple.com/documentation/appkit/nswindow/1419404-title?language=objc
     _pWindow->setTitle( NS::String::string( "MIT 6.837 Assignment 0", NS::StringEncoding::UTF8StringEncoding ) );
 
+    // Moves the window to the front of the screen list, within its level, and makes it the key window; that is, it shows the window.
+    // Docs: https://developer.apple.com/documentation/appkit/nswindow/1419208-makekeyandorderfront?language=objc
     _pWindow->makeKeyAndOrderFront( nullptr );
 
+    // An object that manages an app’s main event loop and resources used by all of that app’s objects.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication?language=objc
     auto* pApp = reinterpret_cast< NS::Application* >( pNotification->object() );
-    pApp->activateIgnoringOtherApps( true );
+
+    // Makes the receiver the active app.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication/1428468-activateignoringotherapps?language=objc
+    pApp->activateIgnoringOtherApps(true);
 }
 
 bool MyAppDelegate::applicationShouldTerminateAfterLastWindowClosed( NS::Application* pSender )
@@ -283,8 +299,12 @@ void MyMTKViewDelegate::drawInMTKView( MTK::View* pView )
 #pragma region Renderer {
 
 Renderer::Renderer( MTL::Device* pDevice )
-        : _pDevice( pDevice->retain() )
+        : _pDevice( pDevice->retain() ) // retain() Increments the receiver’s reference count. Docs: https://developer.apple.com/documentation/objectivec/1418956-nsobject/1571946-retain?language=objc
 {
+
+    // Creates a queue you use to submit rendering and computation commands to a GPU.
+    // Docs: https://developer.apple.com/documentation/metal/mtldevice/1433388-newcommandqueue?language=objc
+    //       https://developer.apple.com/documentation/metal/mtlcommandqueue?language=objc
     _pCommandQueue = _pDevice->newCommandQueue();
 }
 
@@ -296,15 +316,42 @@ Renderer::~Renderer()
 
 void Renderer::draw( MTK::View* pView )
 {
+    // An object that supports Cocoa’s reference-counted memory management system.
+    // Docs: https://developer.apple.com/documentation/foundation/nsautoreleasepool?language=objc
     NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
 
+    // Returns a command buffer from the command queue that maintains strong references to resources.
+    // CommandBuffer is a container that stores a sequence of GPU commands that you encode into it.
+    // Docs: https://developer.apple.com/documentation/metal/mtlcommandqueue/1508686-commandbuffer?language=objc
+    //       https://developer.apple.com/documentation/metal/mtlcommandbuffer?language=objc
     MTL::CommandBuffer* pCmd = _pCommandQueue->commandBuffer();
+
+    // A render pass descriptor to draw into the current drawable.
+    // RenderPassDescriptor is a group of render targets that hold the results of a render pass.
+    // Docs: https://developer.apple.com/documentation/metalkit/mtkview/1536024-currentrenderpassdescriptor?language=objc
+    //       https://developer.apple.com/documentation/metal/mtlrenderpassdescriptor?language=objc
     MTL::RenderPassDescriptor* pRpd = pView->currentRenderPassDescriptor();
+
+    // Creates a render command encoder from a descriptor.
+    // RenderCommandEnconder is an interface that encodes a render pass into a command buffer, including all its draw calls and configuration.
+    // Docs: https://developer.apple.com/documentation/metal/mtlcommandbuffer/1442999-rendercommandencoderwithdescript?language=objc
+    //       https://developer.apple.com/documentation/metal/mtlrendercommandencoder?language=objc
     MTL::RenderCommandEncoder* pEnc = pCmd->renderCommandEncoder( pRpd );
+
+    // Declares that all command generation from the encoder is completed.
+    // Docs: https://developer.apple.com/documentation/metal/mtlcommandencoder/1458038-endencoding?language=objc
     pEnc->endEncoding();
+
+    // Presents a drawable as early as possible.
+    // Docs: https://developer.apple.com/documentation/metal/mtlcommandbuffer/1443029-presentdrawable?language=objc
     pCmd->presentDrawable( pView->currentDrawable() );
+
+    // Submits the command buffer to run on the GPU.
+    // Docs: https://developer.apple.com/documentation/metal/mtlcommandbuffer/1443003-commit?language=objc
     pCmd->commit();
 
+    // Releases and pops the receiver.
+    // Docs: https://developer.apple.com/documentation/foundation/nsautoreleasepool/1807014-release?language=objc
     pPool->release();
 }
 
