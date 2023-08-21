@@ -25,41 +25,76 @@ private:
     MTL::CommandQueue* _pCommandQueue;
 };
 
-// This class contains methods for responding to a MetalKit view's drawing and resizing events.
-// Docs: https://developer.apple.com/documentation/metalkit/mtkviewdelegate?language=objc
+/**
+ * <br>
+ * This class contains methods for responding to a MetalKit view's drawing and resizing events.
+ * <a href="https://developer.apple.com/documentation/metalkit/mtkviewdelegate?language=objc">Docs</a>.
+ */
 class MyMTKViewDelegate : public MTK::ViewDelegate
 {
 public:
     explicit MyMTKViewDelegate( MTL::Device* pDevice );
     ~MyMTKViewDelegate() override;
+
+    /**
+     * <br>
+     * Draws the view's contents.
+     * <a href="https://developer.apple.com/documentation/metalkit/mtkviewdelegate/1535942-drawinmtkview?language=objc">Docs</a>.
+     * @param pView The view requesting that its contents be redrawn.
+     */
     void drawInMTKView( MTK::View* pView ) override;
 
 private:
     Renderer* _pRenderer;
 };
 
+/**
+ * <br>
+ * A set of methods that manage your app’s life cycle and its interaction with common system services.
+ * <a href="https://developer.apple.com/documentation/appkit/nsapplicationdelegate?language=objc">Docs</a>.
+ */
 class MyAppDelegate : public NS::ApplicationDelegate
 {
 public:
     ~MyAppDelegate() override;
 
-    NS::Menu* createMenuBar();
+    static NS::Menu* createMenuBar();
 
+    /**
+     * <br>
+     * Tells the delegate that the app's initialization is about to complete.
+     * <a href="https://developer.apple.com/documentation/appkit/nsapplicationdelegate/1428623-applicationwillfinishlaunching?language=objc">Docs</a>.
+     * @param pNotification : <a href="https://developer.apple.com/documentation/appkit/nsapplicationwillfinishlaunchingnotification?language=objc">ref</a>.
+     */
     void applicationWillFinishLaunching( NS::Notification* pNotification ) override;
+
+    /**
+     * <br>
+     * Tells the delegate that the app’s initialization is complete but it hasn’t received its first event.
+     * <a href="https://developer.apple.com/documentation/appkit/nsapplicationdelegate/1428385-applicationdidfinishlaunching?language=objc">Docs</a>.
+     * @param pNotification : <a href="https://developer.apple.com/documentation/appkit/nsapplicationdidfinishlaunchingnotification?language=objc">ref</a>.
+     */
     void applicationDidFinishLaunching( NS::Notification* pNotification ) override;
+
+    /**
+     * <br>
+     * Returns a Boolean value that indicates if the app terminates once the last window closes.
+     * @param pSender : The application object whose last window was closed.
+     * @return false if the application should not be terminated when its last window is closed; otherwise, true to terminate the application.
+     */
     bool applicationShouldTerminateAfterLastWindowClosed( NS::Application* pSender ) override;
 
 private:
     NS::Window* _pWindow{};
     MTK::View* _pMtkView{};
     MTL::Device* _pDevice{};
-    MyMTKViewDelegate* _pViewDelegate{};
+    MyMTKViewDelegate* _pMtkViewDelegate{};
 };
 
-// This is the list of points (3D vectors)
+// This is the list of points (dynamic array of 3D vectors)
 std::vector<Vector3f> vecv;
 
-// This is the list of normals (also 3D vectors)
+// This is the list of normals (dynamic array of 3D vectors)
 std::vector<Vector3f> vecn;
 
 // This is the list of faces (indices into vecv and vecn)
@@ -67,23 +102,19 @@ std::vector<std::vector<uint32_t>> vecf;
 
 #pragma endregion Declarations }
 
-inline std::vector<uint32_t> extract_indexes(const std::string &s, char delimiter) {
-    std::vector<uint32_t> indexes;
-    std::string token;
-    std::istringstream tokenStream(s);
-    while (std::getline(tokenStream, token, delimiter)) {
-        indexes.push_back(stoi(token));
-    }
-    return indexes;
-}
-
-void loadModel(const std::string* file_name)
+/**
+ * <br>
+ * Loads an .obj file into the vecv, vecn, and vecf vectors.
+ *
+ * @param file_name : string pointer representing the .obj file name
+ */
+void loadModel(const std::string& file_name)
 {
-    std::cout << "Opening file: " << *file_name << "\n";
+    std::cout << "Loading model: " << file_name << std::endl;
 
-    std::ifstream file(*file_name); // Open the file with the given name
+    std::ifstream file(file_name);
     if (!file) {
-        std::cerr << "Unable to open file!\n";
+        std::cerr << "Unable to open " << file_name << "!\n";
         return;
     }
 
@@ -106,32 +137,54 @@ void loadModel(const std::string* file_name)
         }
 
         if(buffer[0] == 'f') {
-            ss >> s;
-            std::string s1, s2, s3;
-            ss >> s1 >> s2 >> s3;
+            ss >> s; // Skip first space, because lines look like this: "f 258/270/258 278/291/278 277/290/277"
+            uint32_t indexes[9];
+            for(int i = 0; i < 3; i++) { // 258/270/258 then 278/291/278 and finally 277/290/277 (3 segments)
+                std::string indexesGroup;
+                ss >> indexesGroup; // first iteration contains "258/270/258" based on examples in previous comments
 
-            std::vector<uint32_t> idx1 = extract_indexes(s1, '/');
-            std::vector<uint32_t> idx2 = extract_indexes(s2, '/');
-            std::vector<uint32_t> idx3 = extract_indexes(s3, '/');
+                std::string token;
+                std::istringstream tokenStream(indexesGroup);
+                while (std::getline(tokenStream, token, '/')) { // 258 then 270 and finally 258
+                    indexes[(3 * i) + i] = stoi(token);
+                }
+            }
 
-            vecf.push_back({idx1[0],idx2[0],idx3[0], idx1[2], idx2[2], idx3[2]});
+            //                  258         278         277         258         278         277
+            vecf.push_back( {indexes[0], indexes[3], indexes[6], indexes[2], indexes[5], indexes[8]} );
         }
     }
+
+    std::cout << file_name << " loaded successfully." << std::endl;
 }
 
 int main() {
-    std::string file_name = "resources/sphere.obj";
-    loadModel(&file_name);
 
+    std::string file_name = "resources/sphere.obj";
+    loadModel(file_name);
+
+    // An object that supports Cocoa's reference-counted memory management system.
+    // Docs: https://developer.apple.com/documentation/foundation/nsautoreleasepool?language=objc
     NS::AutoreleasePool* pAutoreleasePool = NS::AutoreleasePool::alloc()->init();
 
+    // Our own implementation of NS::ApplicationDelegate
     MyAppDelegate del;
 
-    NS::Application* pSharedApplication = NS::Application::sharedApplication();
-    pSharedApplication->setDelegate( &del );
-    pSharedApplication->run();
+    // An object that manages an app's main event loop and resources used by all of that app's objects.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication?language=objc
+    NS::Application* pSharedApplication;
 
+    // Returns the application instance, creating it if it doesn't exist yet.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication/1428360-sharedapplication?language=objc
+    pSharedApplication = NS::Application::sharedApplication();
+
+    pSharedApplication->setDelegate( &del );
+    pSharedApplication->run(); // Starts the main event loop.
+
+    // Releases and pops the receiver.
+    // Docs: https://developer.apple.com/documentation/foundation/nsautoreleasepool/1807014-release?language=objc
     pAutoreleasePool->release();
+
     return 0;
 }
 
@@ -143,7 +196,7 @@ MyAppDelegate::~MyAppDelegate()
     _pMtkView->release();
     _pWindow->release();
     _pDevice->release();
-    delete _pViewDelegate;
+    delete _pMtkViewDelegate;
 }
 
 NS::Menu* MyAppDelegate::createMenuBar()
@@ -197,7 +250,14 @@ void MyAppDelegate::applicationWillFinishLaunching( NS::Notification* pNotificat
     // Docs: https://developer.apple.com/documentation/appkit/nsapplication?language=objc
     auto* pApp = reinterpret_cast< NS::Application* >( pNotification->object() );
 
+
+    // Use this property to assign a new menu bar for your app or to access the current menu bar.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication/1428634-mainmenu?language=objc
     pApp->setMainMenu( pMenu );
+
+    // The application is an ordinary app that appears in the Dock and may have a user interface.
+    // Docs: https://developer.apple.com/documentation/appkit/nsapplication/1428621-setactivationpolicy?language=objc
+    //       https://developer.apple.com/documentation/appkit/nsapplicationactivationpolicy/nsapplicationactivationpolicyregular?language=objc
     pApp->setActivationPolicy( NS::ActivationPolicy::ActivationPolicyRegular );
 }
 
@@ -212,7 +272,7 @@ void MyAppDelegate::applicationDidFinishLaunching( NS::Notification* pNotificati
     _pWindow = NS::Window::alloc()->init(
             frame,
             // The window displays a close button. The window displays a title bar.
-            NS::WindowStyleMaskClosable|NS::WindowStyleMaskTitled,
+            NS::WindowStyleMaskClosable | NS::WindowStyleMaskTitled,
             // The window renders all drawing into a display buffer and then flushes it to the screen.
             NS::BackingStoreBuffered,
             // Specifies whether the window server creates a window device for the window immediately.
@@ -239,12 +299,12 @@ void MyAppDelegate::applicationDidFinishLaunching( NS::Notification* pNotificati
     // Docs: https://developer.apple.com/documentation/metalkit/mtkview/1536036-clearcolor?language=objc
     _pMtkView->setClearColor( MTL::ClearColor::Make( 0.0, 0.0, 0.0, 1.0 ) );
 
-    _pViewDelegate = new MyMTKViewDelegate( _pDevice );
+    _pMtkViewDelegate = new MyMTKViewDelegate(_pDevice );
 
     // Use a delegate to provide a drawing method to a MTKView object and respond to rendering events without subclassing the MTKView class.
-    _pMtkView->setDelegate( _pViewDelegate );
+    _pMtkView->setDelegate(_pMtkViewDelegate );
 
-    // The window’s content view, the highest accessible view object in the window’s view hierarchy.
+    // The window's content view, the highest accessible view object in the window’s view hierarchy.
     // Docs: https://developer.apple.com/documentation/appkit/nswindow/1419160-contentview?language=objc
     _pWindow->setContentView( _pMtkView );
 
@@ -299,7 +359,7 @@ void MyMTKViewDelegate::drawInMTKView( MTK::View* pView )
 #pragma region Renderer {
 
 Renderer::Renderer( MTL::Device* pDevice )
-        : _pDevice( pDevice->retain() ) // retain() Increments the receiver’s reference count. Docs: https://developer.apple.com/documentation/objectivec/1418956-nsobject/1571946-retain?language=objc
+        : _pDevice( pDevice->retain() ) // Increments the receiver’s reference count. Docs: https://developer.apple.com/documentation/objectivec/1418956-nsobject/1571946-retain?language=objc
 {
 
     // Creates a queue you use to submit rendering and computation commands to a GPU.
@@ -310,8 +370,8 @@ Renderer::Renderer( MTL::Device* pDevice )
 
 Renderer::~Renderer()
 {
-    _pCommandQueue->release();
-    _pDevice->release();
+    _pCommandQueue->release(); // Releases and pops the receiver.
+    _pDevice->release(); // Releases and pops the receiver.
 }
 
 void Renderer::draw( MTK::View* pView )
